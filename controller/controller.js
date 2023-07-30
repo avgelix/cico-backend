@@ -7,7 +7,7 @@ router.get('/getCico', function (req, res) {
     res.send('Server is up!');
 })
 
-router.post('/createLoan', (req, res) => {
+router.post('/service/createLoan', (req, res) => {
     const { balance, monthlyPayment, apr, date } = req.body;
     const response = Calculator.calculate({
         method: 'mortgage',
