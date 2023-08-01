@@ -1,6 +1,7 @@
 //express
 var express = require('express')
 var session = require('express-session')
+var pool = require('./database/mysql'); // Use the database connection from db.js
 var app = express()
 
 //keycloak
