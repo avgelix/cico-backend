@@ -38,37 +38,38 @@ router.get('/service/admin', keycloak.protect('realm:app-admin'), function (req,
 });
 
 
-/* Route to handle user login and store user info in the database
-router.post('/service/home', keycloak.protect(), async (req, res) => {
+//Route to handle user login and store user info in the database
+router.post('/service/public', keycloak.protect(), async (req, res) => {
   try {
     console.log('a good start');
     if (req?.kauth?.grant?.access_token?.content?.given_name && req?.kauth?.grant?.access_token?.content?.family_name) {
       const username = req.kauth.grant.access_token.content.preferred_username;
       const fullName = `${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}`;
-
+      const sub = req.kauth.grant.access_token.content.sub; // Get the "sub" value from the access token
+  
       // Check if the user already exists in the database based on the Keycloak 'sub'
-      const [existingUser] = await pool.query('SELECT user_id FROM Users WHERE username = ?', [username]);
-
+      const [existingUser] = await pool.query('SELECT user_id FROM Users WHERE username = ?', [sub]);
+  
       if (existingUser.length > 0) {
         // If the user already exists, retrieve the user_id from the database
         const user_id = existingUser[0].user_id;
         res.json({ user_id, message: 'User logged in.' });
         console.log('omg');
       } else {
-        // If the user does not exist, insert the user into the database
-        const [insertResult] = await pool.query('INSERT INTO Users (username, full_name) VALUES (?, ?)', [username, fullName]);
+        // If the user does not exist, insert the user into the database with the "sub" as the user_id
+        const [insertResult] = await pool.query('INSERT INTO Users (user_id, username, full_name) VALUES (?, ?, ?)', [sub, username, fullName]);
         const user_id = insertResult.insertId;
         res.json({ user_id, message: 'User registered and logged in.' });
         console.log('new one');
       }
     } else {
-      res.status(500).json({ error: 'Full name information not found in the Keycloak token.' });
+      res.status(500).json({});
     }
   } catch (error) {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Internal server error.' });
+    console.error('Error storing user info:', error);
+    res.status(500).json({});
   }
-});*/
+});
 
 module.exports = router;
 
