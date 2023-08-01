@@ -6,6 +6,18 @@ const keycloak = require('../config/keycloak-config.js').getKeycloak();
 
 router.get('/getCico', function (req, res) {
     res.send('Server is up!');
+});
+
+router.post('/service/createLoan', (req, res) => {
+  const { balance, monthlyPayment, apr, date } = req.body;
+  const response = Calculator.calculate({
+      method: 'mortgage',
+      apr: apr, //TODO controlla come calcoli l'apr (attenzione al modo in cui il codice calcola periodicInterest)
+      balance: balance,
+      loanTerm: Math.ceil(balance / monthlyPayment),
+      startDate: date,
+  });
+  res.status(200).json({ message: 'Loan created successfully', response });
 })
 
 router.get('/service/public', function (req, res) {
@@ -24,18 +36,6 @@ router.get('/service/secured', keycloak.protect('realm:app-user'), function (req
 router.get('/service/admin', keycloak.protect('realm:app-admin'), function (req, res) {
     res.json({message: `Hi admin ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}`});
 });
-
-router.post('/service/createLoan', keycloak.protect(), (req, res) => {
-  const { balance, monthlyPayment, apr, date } = req.body;
-  const response = Calculator.calculate({
-      method: 'mortgage',
-      apr: apr, //TODO controlla come calcoli l'apr (attenzione al modo in cui il codice calcola periodicInterest)
-      balance: balance,
-      loanTerm: Math.ceil(balance / monthlyPayment),
-      startDate: date,
-  });
-  res.status(200).json({ message: 'Loan created successfully', response });
-})
 
 ///Route to handle user login and store user info in the database
 router.post('/service/public', keycloak.protect(), async (req, res) => {
