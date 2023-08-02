@@ -70,6 +70,39 @@ router.post('/service/public', keycloak.protect(), async (req, res) => {
   }
 });
 
+
+// Route to handle loan creation
+router.post('/service/newLoan', async (req, res) => {
+  try {
+    const { loan_amount, annual_interest, lender_name, lendee_name, amortization_data, } = req.body;
+
+    const amortizationDataString = JSON.stringify(amortization_data);
+
+    // Retrieve the lender_user_id from the Users table based on the lender_name
+    const [lenderResult] = await pool.query('SELECT user_id FROM Users WHERE full_name = ?', [lender_name]);
+    const lender_user_id = lenderResult[0]?.user_id || null; // Use null if the lender_name is not found in the Users table
+
+    // Retrieve the lendee_user_id from the Users table based on the lendee_name
+    const [lendeeResult] = await pool.query('SELECT user_id FROM Users WHERE full_name = ?', [lendee_name]);
+    const lendee_user_id = lendeeResult[0]?.user_id || null; // Use null if the lendee_name is not found in the Users table
+
+    // Insert the loan details into the Loans table
+    const [insertResult] = await pool.query(
+      'INSERT INTO Loans (loan_amount, annual_interest, lender_user_id, lendee_user_id, amortization_data) VALUES (?, ?, ?, ?, ?)',
+      [loan_amount, annual_interest, lender_user_id, lendee_user_id, amortizationDataString]
+    );
+
+    // Retrieve the auto-generated loan_id from the insert result
+    const loan_id = insertResult.insertId;
+
+    res.status(200).json({ loan_id, message: 'Loan created successfully' });
+  } catch (error) {
+    console.error('Error creating loan:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
 module.exports = router;
 
 
