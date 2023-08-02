@@ -102,7 +102,81 @@ router.post('/service/newLoan', async (req, res) => {
   }
 });
 
+/*
+router.get('/service/loans', keycloak.protect(), async (req, res) => {
+  try {
+    const userType = req.query.userType; // Get the userType query parameter (either 'lender' or 'lendee')
+    const user_id = req.kauth.grant.access_token.content.sub; // Assuming the user_id is stored in the access token
 
+    // Fetch loans from the database based on the user_id and userType
+    let query = 'SELECT * FROM Loans WHERE ';
+
+    if (userType === 'lender') {
+      query += 'lender_user_id = ?';
+    } else if (userType === 'lendee') {
+      query += 'lendee_user_id = ?';
+    } else {
+      res.status(400).json({ error: 'Invalid userType parameter.' });
+      return;
+    }
+
+    const [loans] = await pool.query(query, [user_id]);
+
+    res.json({ loans });
+  } catch (error) {
+    console.error('Error fetching loans...:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});*/
+
+router.get('/service/lenderLoans', keycloak.protect(), async (req, res) => {
+  try {
+    console.log('lets do this');
+    const user_id = req.kauth.grant.access_token.content.sub; // Assuming the user_id is stored in the access token
+    console.log(user_id);
+
+    // Fetch loans from the database based on the lender_user_id and join with Users table to get lendee's full name
+    const query = `
+      SELECT l.*, u.full_name as lendee_full_name
+      FROM Loans l
+      JOIN Users u ON l.lendee_user_id = u.user_id
+      WHERE l.lender_user_id = ?`;
+
+    const [loans] = await pool.query(query, [user_id]);
+
+    console.log(loans);
+    res.json({ loans });
+
+  } catch (error) {
+    console.error('Error fetching loans:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
+
+
+router.get('/service/lendeeLoans', keycloak.protect(), async (req, res) => {
+  try {
+    console.log('lets do this');
+    const user_id = req.kauth.grant.access_token.content.sub; // Assuming the user_id is stored in the access token
+    console.log(user_id);
+
+    // Fetch loans from the database based on the lendee_user_id and join with Users table to get lender's full name
+    const query = `
+      SELECT l.*, u.full_name as lender_full_name
+      FROM Loans l
+      JOIN Users u ON l.lender_user_id = u.user_id
+      WHERE l.lendee_user_id = ?`;
+
+    const [loans] = await pool.query(query, [user_id]);
+
+    console.log(loans);
+    res.json({ loans });
+
+  } catch (error) {
+    console.error('Error fetching loans:', error);
+    res.status(500).json({ error: 'Internal server error.' });
+  }
+});
 module.exports = router;
 
 
