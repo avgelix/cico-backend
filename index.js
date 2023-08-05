@@ -14,8 +14,8 @@ var cors = require('cors');
 
 
 app.use((req, res, next) => {
-  res.cookie('myCrossOriginCookie', 'crossOriginValue', {
-    sameSite: 'None',
+  res.cookie('myCrossOriginCookie', 'KEYCLOAK_3P_COOKIE', 'crossOriginValue', {
+    SameSite: 'None',
     secure: true,
     domain: 'localhost:8080', // Replace with your frontend domain
   });
@@ -23,9 +23,9 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Replace with the actual origin of your frontend application
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, *'); //Content-Type, Authorization
 
   // Handle the preflight OPTIONS request
   if (req.method === 'OPTIONS') {

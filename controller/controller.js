@@ -8,7 +8,7 @@ router.get('/getCico', function (req, res) {
     res.send('Server is up!');
 });
 
-router.post('/service/createLoan', (req, res) => {
+router.post('/service/createAmor', (req, res) => {
   const { balance, monthlyPayment, apr, date } = req.body;
   const response = Calculator.calculate({
       method: 'mortgage',
@@ -102,33 +102,6 @@ router.post('/service/newLoan', async (req, res) => {
   }
 });
 
-/*
-router.get('/service/loans', keycloak.protect(), async (req, res) => {
-  try {
-    const userType = req.query.userType; // Get the userType query parameter (either 'lender' or 'lendee')
-    const user_id = req.kauth.grant.access_token.content.sub; // Assuming the user_id is stored in the access token
-
-    // Fetch loans from the database based on the user_id and userType
-    let query = 'SELECT * FROM Loans WHERE ';
-
-    if (userType === 'lender') {
-      query += 'lender_user_id = ?';
-    } else if (userType === 'lendee') {
-      query += 'lendee_user_id = ?';
-    } else {
-      res.status(400).json({ error: 'Invalid userType parameter.' });
-      return;
-    }
-
-    const [loans] = await pool.query(query, [user_id]);
-
-    res.json({ loans });
-  } catch (error) {
-    console.error('Error fetching loans...:', error);
-    res.status(500).json({ error: 'Internal server error.' });
-  }
-});*/
-
 router.get('/service/lenderLoans', keycloak.protect(), async (req, res) => {
   try {
     console.log('lets do this');
@@ -177,6 +150,34 @@ router.get('/service/lendeeLoans', keycloak.protect(), async (req, res) => {
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
+
+// Route to handle payment creation
+router.post('/service/newPayment', async (req, res) => {
+  try {
+    const { loan_id, payment_amount, payment_date, payment_method, payment_notes, amortization_data, } = req.body;
+
+    const amortizationDataString = JSON.stringify(amortization_data);
+
+    // Insert the payment details into the PaymentHistory table
+    const [insertResult] = await pool.query(
+      'INSERT INTO PaymentHistory (loan_id, payment_amount,payment_date, payment_method, payment_notes, amortization_data) VALUES (?, ?, ?, ?, ?, ?)',
+      [loan_id, payment_amount, payment_date, payment_method, payment_notes, amortizationDataString]
+    );
+
+    // Retrieve the auto-generated loan_id from the insert result
+    const payment_id = insertResult.insertId;
+
+    res.status(200).json({ payment_id, message: 'Payment created successfully' });
+  } catch (error) {
+    console.error('Error recording payment:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+
+
 module.exports = router;
 
 
