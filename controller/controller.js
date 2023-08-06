@@ -5,36 +5,36 @@ const pool = require('../database/mysql'); // Import the database connection poo
 const keycloak = require('../config/keycloak-config.js').getKeycloak();
 
 router.get('/getCico', function (req, res) {
-    res.send('Server is up!');
+  res.send('Server is up!');
 });
 
 router.post('/service/createAmor', (req, res) => {
   const { balance, monthlyPayment, apr, date } = req.body;
   const response = Calculator.calculate({
-      method: 'mortgage',
-      apr: apr, //TODO controlla come calcoli l'apr (attenzione al modo in cui il codice calcola periodicInterest)
-      balance: balance,
-      loanTerm: Math.ceil(balance / monthlyPayment),
-      startDate: date,
+    method: 'mortgage',
+    apr: apr,
+    balance: balance,
+    loanTerm: Math.ceil(balance / monthlyPayment),
+    startDate: date,
   });
   res.status(200).json({ message: 'Loan created successfully', response });
 })
 
 router.get('/service/public', function (req, res) {
-    if(req?.kauth?.grant?.access_token?.content?.given_name && req?.kauth?.grant?.access_token?.content?.family_name){
-      res.json({message: `Hi ${req?.kauth?.grant?.access_token?.content?.given_name} ${req?.kauth?.grant?.access_token?.content?.family_name}`});
-    }
-    else {
-      res.status(500).json({});
-    }
-  });
-  
-router.get('/service/secured', keycloak.protect('realm:app-user'), function (req, res) {
-    res.json({message: `Hi user ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}`});
+  if (req?.kauth?.grant?.access_token?.content?.given_name && req?.kauth?.grant?.access_token?.content?.family_name) {
+    res.json({ message: `Hi ${req?.kauth?.grant?.access_token?.content?.given_name} ${req?.kauth?.grant?.access_token?.content?.family_name}` });
+  }
+  else {
+    res.status(500).json({});
+  }
 });
-  
+
+router.get('/service/secured', keycloak.protect('realm:app-user'), function (req, res) {
+  res.json({ message: `Hi user ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}` });
+});
+
 router.get('/service/admin', keycloak.protect('realm:app-admin'), function (req, res) {
-    res.json({message: `Hi admin ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}`});
+  res.json({ message: `Hi admin ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}` });
 });
 
 ///Route to handle user login and store user info in the database
@@ -45,10 +45,10 @@ router.post('/service/public', keycloak.protect(), async (req, res) => {
       const username = req.kauth.grant.access_token.content.preferred_username;
       const fullName = `${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}`;
       const sub = req.kauth.grant.access_token.content.sub; // Get the "sub" value from the access token
-  
+
       // Check if the user already exists in the database based on the Keycloak 'sub'
       const existingUser = await pool.query('SELECT user_id FROM Users WHERE username = ?', [sub]);
-  
+
       if (existingUser.length > 0) {
         // If the user already exists, retrieve the user_id from the database
         const user_id = existingUser[0].user_id;
@@ -74,7 +74,7 @@ router.post('/service/public', keycloak.protect(), async (req, res) => {
 // Route to handle loan creation
 router.post('/service/newLoan', async (req, res) => {
   try {
-    const { loan_amount, annual_interest, lender_name, lendee_name, amortization_data, } = req.body;
+    const { loan_amount, latest_balance, annual_interest, lender_name, lendee_name, amortization_data, } = req.body;
 
     const amortizationDataString = JSON.stringify(amortization_data);
 
@@ -88,8 +88,8 @@ router.post('/service/newLoan', async (req, res) => {
 
     // Insert the loan details into the Loans table
     const [insertResult] = await pool.query(
-      'INSERT INTO Loans (loan_amount, annual_interest, lender_user_id, lendee_user_id, amortization_data) VALUES (?, ?, ?, ?, ?)',
-      [loan_amount, annual_interest, lender_user_id, lendee_user_id, amortizationDataString]
+      'INSERT INTO Loans (loan_amount, latest_balance, annual_interest, lender_user_id, lendee_user_id, amortization_data) VALUES (?, ?, ?, ?, ?, ?)',
+      [loan_amount, latest_balance, annual_interest, lender_user_id, lendee_user_id, amortizationDataString]
     );
 
     // Retrieve the auto-generated loan_id from the insert result
@@ -159,18 +159,60 @@ router.post('/service/newPayment', async (req, res) => {
 
     const amortizationDataString = JSON.stringify(amortization_data);
 
-    // Insert the payment details into the PaymentHistory table
-    const [insertResult] = await pool.query(
-      'INSERT INTO PaymentHistory (loan_id, payment_amount,payment_date, payment_method, payment_notes, amortization_data) VALUES (?, ?, ?, ?, ?, ?)',
-      [loan_id, payment_amount, payment_date, payment_method, payment_notes, amortizationDataString]
-    );
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
 
-    // Retrieve the auto-generated loan_id from the insert result
-    const payment_id = insertResult.insertId;
+    try {
+      // Insert the payment details into the PaymentHistory table
+      const [insertResult] = await pool.query(
+        'INSERT INTO PaymentHistory (loan_id, payment_amount,payment_date, payment_method, payment_notes, amortization_data) VALUES (?, ?, ?, ?, ?, ?)',
+        [loan_id, payment_amount, payment_date, payment_method, payment_notes, amortizationDataString]
+      );
 
-    res.status(200).json({ payment_id, message: 'Payment created successfully' });
+      // Update the latest_balance in the Loans table
+      await connection.query(
+        `UPDATE Loans AS l
+        SET latest_balance = (SELECT l.loan_amount - COALESCE(SUM(p.payment_amount), 0)
+            FROM PaymentHistory AS p
+            WHERE p.loan_id = l.loan_id)
+        WHERE l.loan_id = ?`,
+        [loan_id]
+      );
+
+      // Commit the transaction if both queries succeed
+      await connection.commit();
+
+      // Retrieve the auto-generated payment_id from the insert result
+      const payment_id = insertResult.insertId;
+
+      res.status(200).json({ payment_id, message: 'Payment created successfully' });
+    } catch (error) {
+      // Rollback the transaction if there's an error
+      await connection.rollback();
+      throw error; // Rethrow the error to be caught in the outer catch block
+    } finally {
+      // Release the connection back to the pool
+      connection.release();
+    }
   } catch (error) {
     console.error('Error recording payment:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+//Route to handle fetching all payments related to a loan
+router.get('/service/paymentHistory/:loanId', async (req, res) => {
+  const { loanId } = req.params;
+
+  try {
+    const query = 'SELECT * FROM PaymentHistory WHERE loan_id = ?';
+    const [rows] = await pool.query(query, [loanId]);
+
+    console.log({ rows });
+    res.json({ paymentHistory: rows });
+  } catch (error) {
+    console.error('Error fetching payment history:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
