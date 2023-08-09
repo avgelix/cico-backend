@@ -17,19 +17,22 @@ export class MortgageAmortization implements AmortizationMethod {
      * Creates a new Mortgage Amortization 
      * @param {number} balance          
      * @param {number} periodicInterest 
-     * @param {number} periods          
+     * @param {number} periods
+     * @param {number} monthlyPayment          
      */
-    constructor(balance: number,
+    constructor(
+        balance: number,
         periodicInterest: number,
         periods: number,
-        startDate: Date
+        startDate: Date,
+        monthlyPayment: number,
     ) {
 
         this.balance = balance;
         this.periodicInterest = periodicInterest;
         this.periods = periods;
         this.startDate = startDate;
-        this.periodicPayment = this.calculatePeriodicPaymentAmount();
+        this.periodicPayment = monthlyPayment;
         this.schedule = this.calculateSchedule();
         this.totalPayment = this.calculateTotalPayment();
         this.totalInterest = this.calculateTotalInterest();
@@ -42,7 +45,7 @@ export class MortgageAmortization implements AmortizationMethod {
      */
     public calculatePeriodicPaymentAmount(): number {
 
-        return this.balance * (this.periodicInterest + (this.periodicInterest / (Math.pow((1 + this.periodicInterest), this.periods) - 1)));
+        return this.periodicPayment;
 
     }
 
