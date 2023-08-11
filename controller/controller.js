@@ -152,6 +152,22 @@ router.get('/service/lendeeLoans', keycloak.protect(), async (req, res) => {
 });
 
 
+router.post('/service/checkUser', async (req, res) => {
+  const {username} = req.body;
+ 
+  // Query the database to check if the username exists
+  const query = 'SELECT * FROM Users WHERE full_name = ?';
+  const [result] = await pool.query(query, [username]);
+
+  console.log({ result });
+    if (result.length > 0) {
+      res.json({ exists: true }); // Send a JSON response indicating the username exists
+    } else {
+      res.json({ exists: false }); // Send a JSON response indicating the username doesn't exist
+    }
+
+  });
+
 // Route to handle payment creation
 router.post('/service/newPayment', async (req, res) => {
   try {
