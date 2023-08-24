@@ -23,7 +23,7 @@ class Calculator {
             method = config.method;
         }
         //Turn APR into periodic interest
-        let periodicInterest = (config.apr/100)/12;
+        let periodicInterest = (config.apr / 100) / 12;
         //Return the amortization
         return new method(config.balance, periodicInterest, config.loanTerm, config.startDate);
     }

@@ -4,10 +4,32 @@ var Calculator = require('../dist/node/calculator').Calculator;
 const pool = require('../database/mysql'); // Import the database connection pool from mysql.js
 const keycloak = require('../config/keycloak-config.js').getKeycloak();
 
+//Server health check
 router.get('/getCico', function (req, res) {
   res.send('Server is up!');
 });
 
+//keycloak user login and authentication check
+router.get('/service/public', function (req, res) {
+  if (req?.kauth?.grant?.access_token?.content?.given_name && req?.kauth?.grant?.access_token?.content?.family_name) {
+    res.json({ message: `Hi ${req?.kauth?.grant?.access_token?.content?.given_name} ${req?.kauth?.grant?.access_token?.content?.family_name}` });
+  }
+  else {
+    res.status(500).json({});
+  }
+});
+
+//keycloak user login and authentication check
+router.get('/service/secured', keycloak.protect('realm:app-user'), function (req, res) {
+  res.json({ message: `Hi user ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}` });
+});
+
+//keycloak user login and authentication check
+router.get('/service/admin', keycloak.protect('realm:app-admin'), function (req, res) {
+  res.json({ message: `Hi admin ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}` });
+});
+
+//Route to handle the creation of an amortization table for a given loan
 router.post('/service/createAmor', (req, res) => {
   const { balance, monthlyPayment, apr, date } = req.body;
   const response = Calculator.calculate({
@@ -18,23 +40,6 @@ router.post('/service/createAmor', (req, res) => {
     startDate: date,
   });
   res.status(200).json({ message: 'Loan created successfully', response });
-})
-
-router.get('/service/public', function (req, res) {
-  if (req?.kauth?.grant?.access_token?.content?.given_name && req?.kauth?.grant?.access_token?.content?.family_name) {
-    res.json({ message: `Hi ${req?.kauth?.grant?.access_token?.content?.given_name} ${req?.kauth?.grant?.access_token?.content?.family_name}` });
-  }
-  else {
-    res.status(500).json({});
-  }
-});
-
-router.get('/service/secured', keycloak.protect('realm:app-user'), function (req, res) {
-  res.json({ message: `Hi user ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}` });
-});
-
-router.get('/service/admin', keycloak.protect('realm:app-admin'), function (req, res) {
-  res.json({ message: `Hi admin ${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}` });
 });
 
 ///Route to handle user login and store user info in the database
@@ -71,7 +76,7 @@ router.post('/service/public', keycloak.protect(), async (req, res) => {
 });
 
 
-// Route to handle loan creation
+// Routes to handle loan creation
 router.post('/service/newLoan', async (req, res) => {
   try {
     const { loan_amount, latest_balance, annual_interest, lender_name, lendee_name, amortization_data, } = req.body;
@@ -152,21 +157,22 @@ router.get('/service/lendeeLoans', keycloak.protect(), async (req, res) => {
 });
 
 
+//Route to check the user input on loan creation to ensure the names of lendee and lender refer to valid, existing users
 router.post('/service/checkUser', async (req, res) => {
-  const {username} = req.body;
- 
+  const { username } = req.body;
+
   // Query the database to check if the username exists
   const query = 'SELECT * FROM Users WHERE full_name = ?';
   const [result] = await pool.query(query, [username]);
 
   console.log({ result });
-    if (result.length > 0) {
-      res.json({ exists: true }); // Send a JSON response indicating the username exists
-    } else {
-      res.json({ exists: false }); // Send a JSON response indicating the username doesn't exist
-    }
+  if (result.length > 0) {
+    res.json({ exists: true }); // Send a JSON response indicating the username exists
+  } else {
+    res.json({ exists: false }); // Send a JSON response indicating the username doesn't exist
+  }
 
-  });
+});
 
 // Route to handle payment creation
 router.post('/service/newPayment', async (req, res) => {
@@ -233,9 +239,4 @@ router.get('/service/paymentHistory/:loanId', async (req, res) => {
   }
 });
 
-
-
-
 module.exports = router;
-
-

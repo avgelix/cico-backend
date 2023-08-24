@@ -1,0 +1,50 @@
+version: "3"
+services:
+  backend:
+    image: avgelix/cicobe
+    networks:
+      - cico_network
+    ports:
+      - 3000:3000
+
+  frontend:
+    image: avgelix/cicofe
+    depends_on:
+      - backend
+    networks:
+      - cico_network
+    ports:
+      - 8080:8080
+    
+  mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    networks:
+      - cico_network
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  keycloak:
+    image: koolwithk/keycloak-arm:16.0.0
+    environment:
+      KEYCLOAK_USER: ${KEYCLOAK_USER}
+      KEYCLOAK_PASSWORD: ${KEYCLOAK_PASSWORD}
+    networks:
+      - cico_network
+    ports:
+      - 8089:8080
+    volumes:
+      - keycloak-data:/opt/jboss/keycloak/standalone/data
+networks:
+  cico_network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  keycloak-data:

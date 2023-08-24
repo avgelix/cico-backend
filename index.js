@@ -1,4 +1,3 @@
-//express
 var express = require('express')
 var session = require('express-session')
 var pool = require('./database/mysql'); // Use the database connection from db.js
@@ -10,7 +9,6 @@ const sessionSecret = require('./config/keycloak-config.js').sessionSecret;
 const memoryStore = require('./config/keycloak-config.js').memoryStore;
 const bodyParser = require('body-parser');
 var port = 3000;
-var cors = require('cors');
 
 
 app.use((req, res, next) => {
@@ -23,7 +21,7 @@ app.use((req, res, next) => {
 });
 
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); 
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, *'); //Content-Type, Authorization
 
@@ -37,7 +35,6 @@ app.use((req, res, next) => {
 
 app.use(bodyParser.json());
 
-/*app.use(cors());*/
 app.use(session({
   secret: sessionSecret,
   resave: false,
@@ -57,8 +54,3 @@ app.use('/', controller);
 app.listen(port, () => {
   console.log(`Listening on port ${port}`)
 });
-
-
-/*app.use('*', (req, res) =>{
-    res.send();
-});*/
