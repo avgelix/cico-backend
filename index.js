@@ -44,7 +44,6 @@ app.use(session({
 }));
 
 app.use(keycloak.middleware());
-// app.use(keycloak.middleware({ logout: '/logoff' }));
 
 //controller
 var controller = require('./controller/controller.js');

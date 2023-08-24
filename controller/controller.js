@@ -45,7 +45,6 @@ router.post('/service/createAmor', (req, res) => {
 ///Route to handle user login and store user info in the database
 router.post('/service/public', keycloak.protect(), async (req, res) => {
   try {
-    console.log('a good start');
     if (req?.kauth?.grant?.access_token?.content?.given_name && req?.kauth?.grant?.access_token?.content?.family_name) {
       const username = req.kauth.grant.access_token.content.preferred_username;
       const fullName = `${req.kauth.grant.access_token.content.given_name} ${req.kauth.grant.access_token.content.family_name}`;
@@ -109,7 +108,6 @@ router.post('/service/newLoan', async (req, res) => {
 
 router.get('/service/lenderLoans', keycloak.protect(), async (req, res) => {
   try {
-    console.log('lets do this');
     const user_id = req.kauth.grant.access_token.content.sub; // Assuming the user_id is stored in the access token
     console.log(user_id);
 
@@ -134,7 +132,6 @@ router.get('/service/lenderLoans', keycloak.protect(), async (req, res) => {
 
 router.get('/service/lendeeLoans', keycloak.protect(), async (req, res) => {
   try {
-    console.log('lets do this');
     const user_id = req.kauth.grant.access_token.content.sub; // Assuming the user_id is stored in the access token
     console.log(user_id);
 
